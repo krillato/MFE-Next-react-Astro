@@ -58,7 +58,7 @@ Root `package.json` เพิ่ม script รวม (ใส่เองหล�
   "scripts": {
     "dev:landing": "pnpm --filter landing-astro dev",
     "dev:shell": "pnpm --filter shell-nextjs dev",
-    "dev:widget": "pnpm --filter widget-react19 dev"
+    "dev:widget": "pnpm --filter widget-react19 build && pnpm --filter widget-react19 preview"
   }
 }
 ```
@@ -348,7 +348,10 @@ cd landing-astro
 const shellUrl = import.meta.env.PUBLIC_SHELL_URL ?? 'http://localhost:3000'
 ---
 <html lang="th">
-  <head><title>MFE Workshop — Landing</title></head>
+  <head>
+    <meta charset="utf-8" />
+    <title>MFE Workshop — Landing</title>
+  </head>
   <body>
     <h1>Landing Page (Astro SSG — deploy แยกจากแอปหลักสนิท)</h1>
     <p>หน้านี้ build เป็น static HTML ล่วงหน้า ไม่มี JS runtime composition ใดๆ กับแอปหลักเลย</p>
@@ -468,6 +471,81 @@ Push repo ขึ้น GitHub ก่อน (repo เดียว มีทั้
   pnpm add -D @module-federation/vite
   ```
 - **วิธีเช็คว่าถูกจริง:** `ls node_modules/@module-federation` ต้องเห็นโฟลเดอร์ `vite` แล้ว `pnpm build` ต้องไม่ฟ้อง error นี้อีก
+
+### 8.5 (ข้อ 4) `create-astro` โหลด template แล้ว `504 Gateway Time-out`
+- **อาการ:** `pnpm create astro@latest landing-astro -- --template minimal --typescript strict` ล้มเหลวด้วย
+  `Failed to download https://api.github.com/repos/withastro/astro/tarball/examples/minimal: 504 Gateway Time-out`
+- **สาเหตุ:** ปัญหาเครือข่าย/GitHub API ชั่วคราว ไม่ใช่คำสั่งผิด (เช็คแล้วจาก network อื่น `api.github.com` ตอบ 200 ปกติ)
+- **แก้:** รันคำสั่งเดิมซ้ำ (ส่วนใหญ่หายเองรอบสอง) ถ้ายังไม่หายลองไม่ใส่ `--template minimal` แล้วเลือกทีหลังแบบ interactive แทน
+
+### 8.6 (ข้อ 5) `apps/landing-astro` กับ `apps/shell-nextjs` กลายเป็น "submodule" โดยไม่ตั้งใจ
+- **อาการ:** `git status` ขึ้น `modified: apps/shell-nextjs (modified content, untracked content)` แทนที่จะ list ไฟล์ปกติ
+- **สาเหตุที่ยืนยันด้วย `git ls-tree HEAD apps/`:** `pnpm create astro@latest` / `pnpm create next-app@latest` แอบรัน
+  `git init` สร้าง `.git` ซ้อนอยู่ข้างในโฟลเดอร์แอปด้วย ทำให้ repo หลักมองเห็นเป็น **gitlink (mode `160000`, เหมือน submodule)**
+  แทนที่จะเห็นไฟล์จริงข้างใน — commit ไปแล้วครั้งหนึ่งด้วย (`git ls-files` เห็นแค่ 1 entry ต่อแอปแทนที่จะเป็นหลายสิบไฟล์)
+  ลบ `.git` ที่ซ้อนออกอย่างเดียวไม่พอ เพราะ gitlink ถูก commit เข้า index/history ไปแล้ว
+- **แก้ (ต้องทำหลังลบ `.git` ซ้อนออกแล้วเท่านั้น):**
+  ```bash
+  git rm --cached apps/landing-astro apps/shell-nextjs
+  git add apps/landing-astro apps/shell-nextjs
+  git commit -m "fix: un-submodule landing-astro and shell-nextjs"
+  git push
+  ```
+- **วิธีเช็คว่าถูกจริง:** `git ls-tree HEAD apps/` ทุกแอปต้องเป็น `040000 tree` เหมือนกันหมด (ไม่มี `160000 commit` เหลือ)
+  และ `git ls-files apps/<แอป> | wc -l` ต้องได้เลขหลักสิบ ไม่ใช่ 1
+
+### 8.7 (ข้อ 5) `node_modules` ของ workspace root หลุดเข้า git เพราะไม่มี root `.gitignore`
+- **อาการ:** `git ls-files | grep -c node_modules` ได้ 6872 (!) ทั้งที่แต่ละแอปมี `.gitignore` ของตัวเองครบและ exclude
+  `node_modules` ถูกต้องอยู่แล้ว (เช็คด้วย `git check-ignore -v` ยืนยันว่าทำงานถูกในระดับแอป)
+- **สาเหตุที่ยืนยันด้วยการไล่ path:** ไฟล์ที่หลุดทั้งหมดอยู่ที่ `node_modules/.pnpm/...` (ระดับ **root ของ workspace**
+  ไม่ใช่ข้างในแอปไหนเลย) — เพราะไม่เคยมี `.gitignore` ที่ root `mfe-workshop/` เลยตั้งแต่แรก คำสั่ง `git add .` ตอน commit
+  แรกสุดเลยลาก `node_modules` ของ pnpm virtual store เข้าไปด้วยทั้งก้อน
+- **แก้:**
+  ```bash
+  cat > .gitignore << 'EOF'
+  node_modules/
+  .DS_Store
+  EOF
+  git rm -r --cached node_modules
+  git add .gitignore
+  git commit -m "fix: stop tracking root node_modules, add root .gitignore"
+  git push
+  ```
+- **วิธีเช็คว่าถูกจริง:** `git ls-files | grep -c node_modules` ต้องได้ `0`
+
+### 8.8 (ข้อ 3) `@vitejs/plugin-react can't detect preamble. Something is wrong.`
+- **อาการ:** เปิด `localhost:3000` แล้ว console ฟ้อง `@vitejs/plugin-react can't detect preamble` ที่บรรทัดของ `Widget.tsx`
+  โดยตรง (path เห็นเป็น `localhost:4174/src/Widget.tsx` ไม่ใช่ `remoteEntry.js`)
+- **สาเหตุ (ความผิดของไกด์เอง):** root `package.json` เขียน script `dev:widget` ไว้ผิดเป็น
+  `pnpm --filter widget-react19 dev` (Vite dev server ปกติ) — ทั้งที่ทั้งไกด์ย้ำว่า widget-react19 ต้องรันด้วย
+  `build && preview` เท่านั้น Vite dev mode ต้องพึ่ง React Refresh "preamble" script ที่ inject จาก HTML ของ Vite
+  เอง แต่พอ shell-nextjs (Next.js คนละ origin) เป็นคน `import()` ไฟล์ `.tsx` ตรงๆ ผ่าน MF runtime preamble เลยไม่มี
+- **แก้:**
+  ```bash
+  cd apps/widget-react19
+  pnpm build && pnpm preview
+  ```
+  และแก้ script ใน root `package.json` ให้ถูกด้วย (กัน error ซ้ำ):
+  ```json
+  "dev:widget": "pnpm --filter widget-react19 build && pnpm --filter widget-react19 preview"
+  ```
+- **วิธีเช็คว่าถูกจริง:** `ps aux | grep vite` ต้องเห็น process เป็น `vite preview` (ไม่ใช่แค่ `vite`/`vite dev`)
+  แล้วรีเฟรช `localhost:3000` error ต้องหาย
+
+### 8.9 (ข้อ 4) ข้อความภาษาไทยในหน้า landing เพี้ยน (mojibake)
+- **อาการ:** เปิด `landing-astro` (dev port จริงคือ `4322` ไม่ใช่ 4321 ตามค่า default ทั่วไป เพราะ 4321 ชนกับ process อื่น
+  ในเครื่อง) แล้ว title/เนื้อหาภาษาไทยกลายเป็นตัวอักษรมั่วๆ เช่น `à¸«à¸™à¹‰à¸²` แทนที่จะเป็น "หน้า"
+- **สาเหตุ:** `<head>` ของ `index.astro` ไม่มี `<meta charset="utf-8" />` — browser เลยเดา encoding ผิดตอนอ่านไฟล์ HTML
+  ที่มีอักขระไทย (UTF-8 หลายไบต์ต่อตัวอักษร) ทั้งที่ตัวไฟล์เก็บเป็น UTF-8 ถูกต้องอยู่แล้ว
+- **แก้:**
+  ```astro
+  <head>
+    <meta charset="utf-8" />
+    <title>MFE Workshop — Landing</title>
+  </head>
+  ```
+- **วิธีเช็คว่าถูกจริง:** รีโหลดหน้า ข้อความไทยต้องอ่านออกปกติ ไม่ใช่ mojibake — เป็นเรื่องที่ต้องเช็คทุกครั้งที่ scaffold
+  หน้า HTML ใหม่ด้วยมือ (framework ส่วนใหญ่อย่าง Next.js ใส่ charset ให้อัตโนมัติ แต่ Astro raw HTML ต้องใส่เอง)
 
 ---
 

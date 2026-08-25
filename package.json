@@ -3,6 +3,6 @@
   "scripts": {
     "dev:landing": "pnpm --filter landing-astro dev",
     "dev:shell": "pnpm --filter shell-nextjs dev",
-    "dev:widget": "pnpm --filter widget-react19 dev"
+    "dev:widget": "pnpm --filter widget-react19 build && pnpm --filter widget-react19 preview"
   }
 }
