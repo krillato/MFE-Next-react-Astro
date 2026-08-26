@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@mfe/design-system/src/theme.css";
 
 :root {
   --background: #ffffff;

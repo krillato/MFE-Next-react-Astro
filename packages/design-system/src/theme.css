@@ -1,0 +1,155 @@
+/**
+ * @mfe/design-system — shared Tailwind v4 design tokens
+ * ทุกแอปใน mfe-workshop import ไฟล์นี้ไฟล์เดียว แก้ที่นี่ที่เดียว ทุกแอปเปลี่ยนตาม
+ */
+@theme {
+  /* ============================================================
+   * Color — Brand scale (50 อ่อนสุด → 950 เข้มสุด)
+   * ============================================================ */
+  --color-brand-50: #eef7ff;
+  --color-brand-100: #d9edff;
+  --color-brand-200: #bce0ff;
+  --color-brand-300: #8ecdff;
+  --color-brand-400: #59b0ff;
+  --color-brand-500: #0ea5e9;
+  --color-brand-600: #0284c7;
+  --color-brand-700: #0369a1;
+  --color-brand-800: #075985;
+  --color-brand-900: #0c4a6e;
+  --color-brand-950: #082f49;
+
+  /* Color — Semantic (สื่อความหมายชัดเจน แยกจาก brand) */
+  --color-success-50: #f0fdf4;
+  --color-success-500: #22c55e;
+  --color-success-700: #15803d;
+
+  --color-warning-50: #fffbeb;
+  --color-warning-500: #f59e0b;
+  --color-warning-700: #b45309;
+
+  --color-danger-50: #fef2f2;
+  --color-danger-500: #f43f5e;
+  --color-danger-700: #be123c;
+
+  --color-info-50: #eff6ff;
+  --color-info-500: #3b82f6;
+  --color-info-700: #1d4ed8;
+
+  /* Color — Neutral (ใช้กับ text/border/bg ทั่วไป) */
+  --color-neutral-50: #fafafa;
+  --color-neutral-100: #f5f5f5;
+  --color-neutral-300: #d4d4d4;
+  --color-neutral-500: #737373;
+  --color-neutral-700: #404040;
+  --color-neutral-900: #171717;
+
+  /* ============================================================
+   * Typography — Font family
+   * ============================================================ */
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+
+  /* Typography — Size scale: ทุก key กำหนด size + line-height คู่กันเสมอ
+     (syntax --text-{name}--line-height เป็น syntax จริงของ Tailwind v4 ที่ตัว
+     Tailwind เองก็ใช้ภายใน — เช็คแล้วจาก node_modules/tailwindcss/theme.css) */
+  --text-xs: 0.75rem;
+  --text-xs--line-height: 1rem;
+  --text-sm: 0.875rem;
+  --text-sm--line-height: 1.25rem;
+  --text-base: 1rem;
+  --text-base--line-height: 1.5rem;
+  --text-lg: 1.125rem;
+  --text-lg--line-height: 1.75rem;
+  --text-xl: 1.25rem;
+  --text-xl--line-height: 1.75rem;
+  --text-2xl: 1.5rem;
+  --text-2xl--line-height: 2rem;
+  --text-3xl: 1.875rem;
+  --text-3xl--line-height: 2.25rem;
+  --text-4xl: 2.25rem;
+  --text-4xl--line-height: 2.5rem;
+  --text-5xl: 3rem;
+  --text-5xl--line-height: 1.1;
+  /* ชื่อ custom เพิ่มนอกสเกลมาตรฐาน — ใช้กับ hero/marketing headline */
+  --text-display-lg: 3.5rem;
+  --text-display-lg--line-height: 1.1;
+  --text-display-xl: 4.5rem;
+  --text-display-xl--line-height: 1.05;
+
+  /* Typography — Font weight (คนละ namespace จาก size — ใช้คู่กัน เช่น text-lg font-semibold) */
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Typography — Letter spacing */
+  --tracking-tighter: -0.03em;
+  --tracking-tight: -0.015em;
+  --tracking-normal: 0em;
+  --tracking-wide: 0.015em;
+  --tracking-wider: 0.03em;
+
+  /* ============================================================
+   * Spacing — เพิ่มค่านอกสเกล default ของ Tailwind (default มีอยู่แล้ว
+   * ตั้งแต่ 0-96 ตรงนี้เพิ่มเฉพาะค่าที่ใช้บ่อยแต่ default ไม่มี)
+   * ============================================================ */
+  --spacing-18: 4.5rem;
+  --spacing-22: 5.5rem;
+  --spacing-26: 6.5rem;
+
+  /* ============================================================
+   * Radius — ตั้งชื่อตามการใช้งานจริง ไม่ใช่แค่ size (สื่อความหมายกว่า)
+   * ============================================================ */
+  --radius-button: 0.5rem;
+  --radius-card: 0.75rem;
+  --radius-modal: 1rem;
+  --radius-pill: 999px;
+
+  /* ============================================================
+   * Shadow — ระดับความสูง (elevation) ใช้สื่อ layer ของ UI
+   * ============================================================ */
+  --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-dropdown: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-modal: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+
+  /* ============================================================
+   * Motion — duration/easing กลาง กันแต่ละแอป transition ไม่เท่ากัน
+   * ============================================================ */
+  --ease-brand: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* ============================================================
+   * Breakpoints — ตั้งชื่อตาม device จริง (Tailwind มี default sm/md/lg/
+   * xl/2xl อยู่แล้วซึ่ง "ใช้ได้" อยู่แล้ว แต่ชื่อ sm/md/lg ไม่สื่อความหมาย
+   * เท่านี้ — ประกาศ alias ชื่อ device เพิ่ม ใช้เป็น tablet:flex-row,
+   * notebook:grid-cols-3 ได้เลย ทุก breakpoint เป็น min-width (mobile-first
+   * เหมือน Tailwind ปกติ — ไม่ระบุ prefix เลย = ค่าเริ่มต้นของ mobile) */
+  --breakpoint-tablet: 48rem;    /* 768px ขึ้นไป */
+  --breakpoint-notebook: 64rem;  /* 1024px ขึ้นไป */
+  --breakpoint-desktop: 90rem;   /* 1440px ขึ้นไป */
+
+  /* ============================================================
+   * Container — max-width มาตรฐานสำหรับ layout wrapper กลางหน้า
+   * (คู่กับ breakpoint ด้านบน ใช้ผ่าน class `max-w-content` เป็นต้น)
+   * ============================================================ */
+  --container-content: 72rem;   /* 1152px — เนื้อหาความกว้างมาตรฐาน */
+  --container-narrow: 42rem;    /* 672px — บทความ/ฟอร์มแคบ */
+
+  /* ============================================================
+   * Aspect ratio — สัดส่วนรูปภาพที่ใช้บ่อยในงานจริง
+   * (Tailwind มี aspect-square, aspect-video ให้อยู่แล้วเป็น default —
+   * เพิ่มชื่อที่ default ไม่มี)
+   * ============================================================ */
+  --aspect-portrait: 3 / 4;   /* รูปโปรไฟล์/การ์ดแนวตั้ง */
+  --aspect-landscape: 4 / 3;  /* รูปสินค้า/thumbnail ทั่วไป */
+  --aspect-cover: 21 / 9;     /* banner กว้างพิเศษ */
+
+  /* ============================================================
+   * Z-index — scale กลาง กัน magic number ชนกันเอง (ปัญหาคลาสสิกของทีมใหญ่)
+   * ============================================================ */
+  --z-index-dropdown: 1000;
+  --z-index-sticky: 1100;
+  --z-index-overlay: 1200;
+  --z-index-modal: 1300;
+  --z-index-toast: 1400;
+}

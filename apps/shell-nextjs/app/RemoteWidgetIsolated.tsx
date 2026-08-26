@@ -24,5 +24,9 @@ export default function RemoteWidgetIsolated() {
     };
   }, []);
 
-  return <div ref={ref}>กำลังโหลด widget จาก remote...</div>;
+  return (
+    <div ref={ref} className="p-4 border border-gray-200 rounded-lg">
+      กำลังโหลด widget จาก remote...
+    </div>
+  );
 }
