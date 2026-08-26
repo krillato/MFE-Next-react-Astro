@@ -2,8 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { mfInstance } from "@/lib/mf";
-
-type MountFn = (el: HTMLElement) => { unmount: () => void };
+import type { MountFn } from "@mfe/shared-types";
 
 export default function RemoteWidgetIsolated() {
   const ref = useRef<HTMLDivElement>(null);

@@ -16,6 +16,9 @@ importers:
 
   apps/shell-nextjs:
     dependencies:
+      '@mfe/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       '@module-federation/runtime':
         specifier: ^2.9.0
         version: 2.9.0
@@ -56,6 +59,9 @@ importers:
 
   apps/widget-react19:
     dependencies:
+      '@mfe/shared-types':
+        specifier: workspace:*
+        version: link:../../packages/shared-types
       react:
         specifier: ^19.2.8
         version: 19.2.8
@@ -102,6 +108,8 @@ importers:
       vite:
         specifier: ^8.2.2
         version: 8.2.2(@types/node@24.13.3)(esbuild@0.28.2)(jiti@2.7.0)
+
+  packages/shared-types: {}
 
 packages:
 

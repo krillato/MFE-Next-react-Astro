@@ -292,10 +292,9 @@ cd apps/shell-nextjs && pnpm dev
 แยกจาก bundle หลักของ Next.js — นี่คือหลักฐานว่า MF โหลดแบบ lazy จริง ไม่ใช่ bundle รวมกันตอน build ถ้าทำตามข้อ 2-3 ครบ
 ต้องเห็นข้อความ "👋 นี่คือ React 19 remote widget..." และปุ่มกดนับได้จริงบนหน้า shell (ทดสอบยืนยันแล้วว่า useState ทำงานถูกต้อง)
 
-> ⚠️ **CORS ตอนขึ้น production:** พอ widget-react19 กับ shell-nextjs อยู่คนละ domain บน Vercel จะเจอ CORS ตอน fetch
-> `remoteEntry.js` ข้าม origin เหมือนที่เจอตอน dev (แก้ไปแล้วด้วย `cors: true` ในข้อ 2.3 ฝั่ง dev/preview server — แต่ Vercel
-> ใช้ static hosting คนละ mechanism จาก `vite preview` ดังนั้น**ต้องทดสอบซ้ำตอน deploy จริง** ว่า Vercel ส่ง
-> `Access-Control-Allow-Origin` มาด้วยไหม เปิด DevTools เช็คจริงแทนเดา — ถ้าไม่มีให้เพิ่ม `vercel.json` ใส่ header เอง)
+> ✅ **CORS ตอนขึ้น production — ทดสอบแล้วยืนยัน ไม่ต้องแก้อะไรเพิ่ม:** widget-react19 กับ shell-nextjs อยู่คนละ domain
+> บน Vercel จริง แต่ Vercel static hosting ส่ง `Access-Control-Allow-Origin: *` ให้อัตโนมัติกับทุกไฟล์ static (เช็คด้วย
+> `curl -I` จริงบน production เจอ header นี้ตรงๆ) ไม่ต้องเพิ่ม `vercel.json` หรือ config อะไรเพิ่มสำหรับเคสนี้
 
 ### 3.5 สิ่งที่ทดสอบแล้วว่ายังพังอยู่จริง — ทำไมถึงใช้ pattern "mount function" แทน "import component ตรงๆ"
 
@@ -398,20 +397,31 @@ main                          ← branch หลัก, deploy จริงทุ
 
 ---
 
-## 6. Deploy ทั้ง 3 แอปแยกกันด้วย Vercel (3 projects, 1 repo)
+## 6. Deploy ทั้ง 3 แอปแยกกันด้วย Vercel (3 projects, 1 repo) — ✅ ทำจริง verified แล้ว
 
-Push repo ขึ้น GitHub ก่อน (repo เดียว มีทั้ง 3 apps) แล้วสร้าง Vercel project **3 ครั้ง** ชี้ repo เดียวกันแต่คนละ Root Directory:
+Push repo ขึ้น GitHub ก่อน (repo เดียว มีทั้ง 3 apps — ต้อง `pnpm install` (ไม่ frozen) ให้ `pnpm-lock.yaml` sync กับทุก
+`package.json` ก่อน push เสมอ ไม่งั้น Vercel จะ fail ที่ `pnpm install --frozen-lockfile` ดู 8.10) แล้วสร้าง Vercel
+project **3 ครั้ง** ชี้ repo เดียวกันแต่คนละ Root Directory:
 
 | Vercel Project | Root Directory | Framework Preset | หมายเหตุ |
 |---|---|---|---|
 | `widget-react19` | `apps/widget-react19` | Vite | deploy ตัวนี้ก่อน เพื่อเอา URL จริงไปใส่ env var ของ shell |
-| `shell-nextjs` | `apps/shell-nextjs` | Next.js | ตั้ง env var `NEXT_PUBLIC_WIDGET_REMOTE_ENTRY` = URL จริงของ widget project (เช่น `https://widget-react19-xxx.vercel.app/remoteEntry.js`) |
+| `shell-nextjs` | `apps/shell-nextjs` | Next.js | ตั้ง env var `NEXT_PUBLIC_WIDGET_REMOTE_ENTRY` = URL จริงของ widget project + **ต้อง redeploy ใหม่หลังตั้ง env var** (ดู 8.11) |
 | `landing-astro` | `apps/landing-astro` | Astro | ตั้ง env var `PUBLIC_SHELL_URL` = URL จริงของ shell project |
 
 **ลำดับ deploy ที่ถูก:** widget → shell (ต้องรู้ URL ของ widget ก่อน) → landing (ต้องรู้ URL ของ shell ก่อน)
 
-**Checkpoint 4 (สุดท้าย):** เปิด URL ของ landing-astro บน production → คลิกลิงก์ไป shell (production) → เห็น widget
-(production) โหลดมาแสดงในหน้า shell ได้ — ครบ loop ทั้ง 3 แอป คนละ deploy คนละ URL คนละ build จริง
+> ⚠️ **ถ้า import repo เดียวกันหลายครั้งโดยไม่เปลี่ยนชื่อ project** Vercel จะตั้งชื่อชนกันหมด (เช่น `widget-react19`,
+> `widget-react19-i7nh`, `widget-react19-n34u` — ล้วนมีคำว่า "widget-react19" แต่จริงๆ เป็นคนละแอปกัน) **ห้ามเชื่อชื่อ**
+> ให้ดู **โลโก้ framework** ในหน้า Vercel dashboard แทน (Vite = สายฟ้าม่วง, Astro = ตัว A สีชมพู, Next.js = วงกลมดำ)
+> แล้วเปิด URL จริงเช็คเนื้อหาก่อนใช้เสมอ ดู 8.10
+
+**✅ CORS บน production — ทดสอบแล้ว ไม่ต้อง config เพิ่ม:** Vercel static hosting ส่ง
+`Access-Control-Allow-Origin: *` ให้อัตโนมัติกับทุกไฟล์ static (รวม `remoteEntry.js`) — ปิดคำถามที่ค้างไว้ตั้งแต่ต้นไกด์ได้แล้ว
+
+**Checkpoint 4 (สุดท้าย) — ✅ verified จริงด้วยการรัน:** เปิด URL ของ landing-astro บน production → คลิกลิงก์ไป shell
+(production) → เห็น widget (production) โหลดมาแสดงในหน้า shell ได้ → คลิกปุ่มนับ ตัวเลขขึ้นจริง (ทดสอบแล้วนับได้ถึง 2) —
+ครบ loop ทั้ง 3 แอป คนละ deploy คนละ URL คนละ build จริง ไม่ใช่แค่ mockup
 
 ---
 
@@ -426,6 +436,56 @@ Push repo ขึ้น GitHub ก่อน (repo เดียว มีทั้
    โดยเปลี่ยน `NEXT_PUBLIC_WIDGET_REMOTE_ENTRY` ให้ชี้ไป URL ที่ไม่มีอยู่จริง ดูว่า error ที่เกิดหน้าตาเป็นยังไง
 6. ทำไม pattern "mount function" ถึงแก้ปัญหา React 2 instance ได้ ทั้งที่ยังโหลด React มา 2 ชุดเหมือนเดิม (hint: ปัญหาไม่ได้อยู่ที่
    "มี React กี่ชุด" แต่อยู่ที่ "ใครเป็นคนเรียก hook กับใครเป็นคน render ต้องเป็น instance เดียวกัน")
+
+### เฉลย Checklist ทั้ง 6 ข้อ (พร้อมตัวอย่างเทียบให้เห็นภาพ)
+
+**1. ทำไม landing-astro ไม่ต้องใช้ MF แต่ยังนับเป็นส่วนหนึ่งของ MFE ได้**
+นิยาม MFE จริงๆ คือ **"แต่ละฟีเจอร์เป็นโปรเจกต์แยก มี stack ของตัวเอง deploy อิสระ"** — ส่วน Module Federation เป็นแค่
+**1 ใน 4 วิธีเชื่อมโปรเจกต์เข้าด้วยกัน** (build-time npm package / iframe / Web Components / Module Federation)
+และมีวิธีที่ห้าที่เรียบง่ายสุดคือ **routing** (แค่ลิงก์ธรรมดา) ซึ่งคือสิ่งที่ landing-astro ทำ
+> ตัวอย่าง: หน้าแรกการตลาดของ Amazon.com กับ Amazon Seller Central เป็นคนละแอปคนละทีมคนละ deploy เชื่อมกันแค่ด้วยลิงก์
+> ไม่มี JS runtime composition เลย แต่ก็ยังนับเป็นระบบเดียวกันในเชิง business ได้ปกติ
+
+**2. ทำไมใช้ `@module-federation/runtime` แทน `@module-federation/nextjs-mf`**
+`nextjs-mf` เป็น **webpack plugin** ต้อง hook เข้า `next.config.js`'s `webpack()` — แต่ Next.js 16 ใช้ **Turbopack เป็น
+default** ซึ่งประกาศตรงๆ ว่า **ไม่รองรับ webpack plugin เลย** ต้อง opt-out (`--webpack`) ถึงจะใช้ได้ (เสียความเร็วของ
+Turbopack ไปฟรีๆ) แถม `nextjs-mf` เองก็เลิกดูแลไปแล้วด้วย ส่วน `@module-federation/runtime` เป็น **pure JS runtime API**
+(`createInstance()` + `loadRemote()`) ไม่ใช่ bundler plugin เลยไม่ชนกับ Turbopack
+> ตัวอย่าง: `nextjs-mf` เหมือนปลั๊กไฟเฉพาะรุ่น (เสียบได้แค่กับเต้าเสียบแบบเก่า/webpack) ส่วน `runtime` เหมือน USB-C
+> ที่เสียบเข้าได้กับทุกอุปกรณ์เพราะไม่ผูกกับ bundler ตัวไหนเลย
+
+**3. `remoteEntry.js` คือไฟล์อะไร ทำไมต้อง fetch ก่อน**
+คือ "สารบัญ/manifest" ของ remote — ไฟล์เล็กๆ บอกว่า remote นี้ expose อะไรบ้าง (`./mount`) และต้องการ shared deps
+version ไหน **ไม่ใช่โค้ดจริงของ widget** host ไม่รู้ล่วงหน้าว่า remote มีอะไรให้ใช้ (build คนละที่คนละเวลา) ต้องถามจาก
+ไฟล์นี้ก่อนเสมอ แล้วค่อยไปโหลด chunk จริงตามที่ manifest บอก (ดู diagram "module-federation-runtime-sequence" ที่
+Interview-FE `/mfe-hands-on-workshop` ประกอบ)
+> ตัวอย่าง: เหมือนสั่งอาหารเดลิเวอรี่ ต้องเปิดเมนูร้าน (`remoteEntry.js`) ดูก่อนว่ามีจานอะไรบ้าง ก่อนจะสั่งจานจริง
+> (fetch chunk) — ครัวไม่ได้ส่งทุกจานมาให้ตั้งแต่แรกโดยไม่ถาม
+
+**4. ทำไมแก้ widget แล้ว merge เข้า main ไม่ทำให้ shell ต้อง redeploy**
+**อยู่ repo เดียวกัน (monorepo) ไม่ใช่คนละ repo** — ที่ deploy แยกไม่กระทบกันเพราะ Vercel ตั้ง **Root Directory** แยก
+ต่อ project แล้วเช็คจาก git diff ว่ามีไฟล์ในโฟลเดอร์นั้นเปลี่ยนไหม ถ้าไม่เปลี่ยนก็ไม่ build ใหม่ให้
+> ตัวอย่าง: เหมือนอพาร์ตเมนต์ตึกเดียวกัน (repo เดียว) แต่แต่ละห้อง (โฟลเดอร์ `apps/`) มีมิเตอร์ไฟแยกกัน (Vercel project
+> แยกกัน) — ห้อง A เปิดแอร์เพิ่ม (แก้โค้ด widget) ไม่ทำให้บิลค่าไฟห้อง B (shell) เปลี่ยนไปด้วย ทั้งที่อยู่ตึกเดียวกัน
+
+**5. ถ้า widget deploy พัง shell จะเกิดอะไรขึ้น**
+โค้ดปัจจุบันยังไม่มี `.catch()` ที่ `loadRemote()` เลย เลยติดค้างที่ข้อความ fallback "กำลังโหลด widget..." ตลอดไป
+ไม่ใช่ error message ที่ชัดเจน แต่ **ส่วนอื่นของหน้า (ISR list, layout) ยังทำงานปกติ** เพราะ widget mount แยกส่วนผ่าน
+`useEffect` ที่ error ของมันไม่ throw ออกมาให้ทั้ง React tree crash (แค่ promise unhandled เฉยๆ)
+> ตัวอย่าง: เว็บข่าวที่มี widget แสดงราคาหุ้น ถ้า widget หุ้นโหลดไม่ได้ ข่าวส่วนอื่นในหน้ายังอ่านได้ปกติ — นี่คือ
+> "blast radius เล็ก" ที่ MFE ให้มา แต่เคสนี้ควรปรับปรุงให้มี error UI ที่ดีกว่า "ค้างตลอดไป" (ลองทำเป็นแบบฝึกหัด)
+
+**6. ทำไม "mount function" แก้ปัญหา React 2 instance ได้**
+กุญแจคือ React ไม่ได้เก็บ state การทำงานของ hook ("current dispatcher") ไว้ที่ component แต่เก็บเป็น **module-level
+variable ภายใน React package instance นั้นๆ** ถ้า host render component ด้วย host's React แต่ component นั้นเรียก
+hook จาก remote's React (คนละก้อน) — dispatcher จะถูกตั้งค่าผิดที่ (instance ที่ component ไม่ได้ใช้) เลยเจอ null
+Pattern mount function แก้โดยให้ **remote จัดการ render ของตัวเองทั้งหมดในโค้ดตัวเอง** — "คนสั่ง render" กับ
+"คนที่เรียก hook" เลยเป็น React instance เดียวกันเป๊ะเสมอ host แค่เรียก `mount(el)` เป็น black box ไม่ยุ่งกับ
+internal ของ React เลย (ดู diagram "mfe-workshop-mount-pattern" ที่ Interview-FE ประกอบ)
+> ตัวอย่าง: จ้างช่างมาซ่อมแอร์ในบ้าน — เจ้าของบ้าน (host) ไม่ต้องรู้ว่าช่าง (widget) ใช้เครื่องมืออะไรข้างใน แค่บอกว่า
+> "ซ่อมตรงนี้ให้หน่อย" (`mount(el)`) ช่างเอาเครื่องมือของตัวเอง (React ของตัวเอง) มาทำงานให้เสร็จในตัวเอง — ถ้าให้
+> เจ้าของบ้านถือเครื่องมือ (host's ReactDOM) แต่บังคับให้ช่างใช้เครื่องมือของตัวเอง (remote's hooks) มันจะสับสนกันว่า
+> ใครคุมอะไร (dispatcher null)
 
 ---
 
@@ -547,11 +607,125 @@ Push repo ขึ้น GitHub ก่อน (repo เดียว มีทั้
 - **วิธีเช็คว่าถูกจริง:** รีโหลดหน้า ข้อความไทยต้องอ่านออกปกติ ไม่ใช่ mojibake — เป็นเรื่องที่ต้องเช็คทุกครั้งที่ scaffold
   หน้า HTML ใหม่ด้วยมือ (framework ส่วนใหญ่อย่าง Next.js ใส่ charset ให้อัตโนมัติ แต่ Astro raw HTML ต้องใส่เอง)
 
+### 8.10 (ข้อ 6) `ERR_PNPM_OUTDATED_LOCKFILE` ตอน deploy บน Vercel
+- **อาการ:** Vercel build fail ทันทีด้วย `Cannot install with "frozen-lockfile" because pnpm-lock.yaml is not up to
+  date with apps/landing-astro/package.json` — `1 dependencies were added: astro@^7.2.6`
+- **สาเหตุที่ยืนยันด้วยการเช็คจริง:** `pnpm-lock.yaml` (root) ถูก commit ไว้ตั้งแต่ก่อน `landing-astro/package.json`
+  จะมี `astro@^7.2.6` (น่าจะจากตอน retry scaffold แก้ error 504 — ดู 8.5) แล้วไม่เคยรัน `pnpm install` ที่ root ซ้ำเพื่อ
+  sync lockfile ก่อน commit — Vercel รัน `pnpm install --frozen-lockfile` เพื่อความ reproducible ซึ่ง fail ทันทีถ้า
+  lockfile กับ package.json ไม่ตรงกัน
+- **แก้:**
+  ```bash
+  pnpm install   # ไม่ใส่ --frozen-lockfile เพื่อให้ regenerate ใหม่
+  git add pnpm-lock.yaml
+  git commit -m "fix: regenerate lockfile"
+  git push
+  ```
+- **วิธีเช็คว่าถูกจริง:** รัน `pnpm install --frozen-lockfile` ที่ local (คำสั่งเดียวกับที่ Vercel รันจริง) ต้องผ่านไม่ error
+  ก่อน push — **กฎทั่วไป:** ทุกครั้งที่แก้ dependency ใน `package.json` ของแอปไหนก็ตาม ต้องรัน `pnpm install` ที่ root
+  แล้ว commit `pnpm-lock.yaml` ไปด้วยเสมอ
+
+### 8.11 (ข้อ 6) shell โหลด widget จาก `localhost:4174` แม้ deploy ขึ้น production แล้ว
+- **อาการ:** เปิด shell บน production ค้างที่ "กำลังโหลด widget จาก remote..." ตลอด console ฟ้อง
+  `[ Federation Runtime ]: Failed to load script resource...imported module: http://localhost:4174/remoteEntry.js`
+- **สาเหตุที่ยืนยันด้วยการเช็ค production จริง:** ตั้ง env var `NEXT_PUBLIC_WIDGET_REMOTE_ENTRY` ใน Vercel dashboard
+  ไว้ถูกแล้ว แต่ **ไม่ได้ redeploy ใหม่** — `NEXT_PUBLIC_*` ของ Next.js ถูก bake เข้า JS bundle ตอน **build time**
+  ไม่ใช่อ่านตอน runtime แค่ตั้งค่าใน dashboard เฉยๆ ไม่มีผลกับ build ที่ deploy ไปแล้วก่อนหน้า
+- **แก้:** ไปที่ Vercel project ของ shell → tab **Deployments** → กด **Redeploy** (หรือ push commit ใหม่ก็ trigger build ให้เอง)
+- **วิธีเช็คว่าถูกจริง:** เปิดหน้า production ใหม่ (tab สดไม่มี cache) เห็น widget render + คลิกปุ่มนับได้จริง —
+  ทดสอบยืนยันแล้วว่าหลัง redeploy ทำงานถูก (นับได้ถึง 2)
+
+---
+
+## 9. ใช้ประโยชน์จริงของ monorepo (แบบฝึกหัดเสริม — ยังไม่ได้ทำ ลองเองแล้วเล่าผล)
+
+ตามที่คุยกัน — สถาปัตยกรรมตอนนี้ (แอปแยกอิสระ สื่อสารผ่าน URL ล้วนๆ) **ไม่ได้ใช้ความสามารถจริงของ monorepo เลย**
+3 repo แยกกันก็ทำงานได้เหมือนเดิม 2 แบบฝึกหัดนี้จะบังคับให้ใช้ของจริง 2 อย่างที่ monorepo ให้ได้แต่ multi-repo ทำยากกว่า
+
+### 9.1 แชร์ type ข้าม 2 แอปผ่าน `workspace:*` (ไม่ต้อง publish package)
+
+ตอนนี้ type `MountFn` ถูกเขียนซ้ำ 2 ที่แบบไม่ผูกกัน — ใน `shell-nextjs/app/RemoteWidgetIsolated.tsx` (ฝั่งเรียกใช้)
+และโดยนัยใน `widget-react19/src/mount.tsx` (ฝั่ง implement) ถ้า widget เปลี่ยน signature ของ `mount()` shell จะไม่รู้
+เลยจนกว่าจะพังตอน runtime — เอา type มา "แชร์จริง" ด้วย local package กัน
+
+**1. เพิ่ม `packages/*` เข้า workspace:**
+```yaml
+# pnpm-workspace.yaml (root) — แก้จาก apps/* เป็น 2 บรรทัด
+packages:
+  - "apps/*"
+  - "packages/*"
+```
+
+**2. สร้าง shared package:**
+```bash
+mkdir -p ~/road-map-30/mfe-workshop/packages/shared-types/src
+cd ~/road-map-30/mfe-workshop/packages/shared-types
+```
+`package.json`:
+```json
+{
+  "name": "@mfe/shared-types",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts"
+}
+```
+`src/index.ts`:
+```ts
+export type MountResult = { unmount: () => void }
+export type MountFn = (el: HTMLElement) => MountResult
+```
+
+**3. ให้ 2 แอปที่ต้องใช้ type นี้ import จาก package เดียวกัน** — เพิ่มใน `dependencies` ของทั้ง
+`apps/shell-nextjs/package.json` และ (ถ้าต้องการ export type จริงจาก build) `apps/widget-react19/package.json`:
+```json
+"@mfe/shared-types": "workspace:*"
+```
+แล้ว `pnpm install` ที่ root ใหม่ (pnpm จะ symlink package นี้เข้า `node_modules` ของทั้ง 2 แอปให้อัตโนมัติ ไม่ต้อง publish)
+
+**4. แก้ `RemoteWidgetIsolated.tsx` ให้ import แทนประกาศเอง:**
+```ts
+import type { MountFn } from '@mfe/shared-types'
+// ลบ type MountFn = ... ที่ประกาศเองทิ้ง
+```
+
+**พิสูจน์ว่าได้ประโยชน์จริง:** ลองแก้ `MountResult` ใน `packages/shared-types/src/index.ts` ให้ผิดเจตนา (เช่นเปลี่ยน
+`unmount: () => void` เป็น `close: () => void`) แล้วรัน `pnpm --filter shell-nextjs build` — TypeScript ต้อง **error
+ทันทีที่ shell** บอกว่า type ไม่ตรง ทั้งที่ยังไม่ได้แตะโค้ดของ shell เลยสักบรรทัด — นี่คือสิ่งที่ 3 repo แยกกันทำไม่ได้
+(ต้อง publish version ใหม่ + อีกฝั่ง update dependency ก่อนถึงจะรู้ว่าพัง)
+
+### 9.2 แก้ contract ข้าม 2 แอปใน PR/commit เดียว (atomic cross-app change)
+
+ต่อยอดจากที่คุยเรื่อง auth ไว้ —ลองเพิ่ม `props` ให้ `mount()` รับ user object จริง แก้พร้อมกันทั้ง 2 แอปใน branch เดียว:
+
+1. `packages/shared-types/src/index.ts` — เพิ่ม `export type MountProps = { user: { name: string } | null }` แล้วแก้
+   `MountFn` ให้รับ `props: MountProps` เป็น argument ที่ 2
+2. `apps/widget-react19/src/mount.tsx` — แก้ `mount(el, props: MountProps)` ส่ง `props.user` เข้า `<Widget user={props.user} />`
+3. `apps/widget-react19/src/Widget.tsx` — รับ prop `user` แสดงชื่อถ้ามี
+4. `apps/shell-nextjs/app/RemoteWidgetIsolated.tsx` — แก้เรียก `mod.mount(ref.current, { user: { name: 'Tammarat' } })`
+
+ทำทั้ง 4 ไฟล์ (ข้าม 2 แอป) ใน branch เดียว, commit เดียว, PR เดียว:
+```bash
+git checkout -b feat/widget-shell-user-prop
+# แก้ 4 ไฟล์ข้างบน
+git add packages/shared-types apps/widget-react19 apps/shell-nextjs
+git commit -m "feat: pass user prop from shell to widget via mount()"
+git push
+```
+
+**พิสูจน์ว่าได้ประโยชน์จริง:** สังเกตว่า PR นี้ diff เดียวมีทั้ง shared-types + widget + shell ครบ — reviewer เห็นภาพรวม
+การเปลี่ยนแปลงทั้งระบบในที่เดียว ไม่ต้องเปิด 2-3 PR คนละ repo แล้วพยายามจำว่าต้อง merge เรียงลำดับไหนก่อนถึงจะไม่พัง —
+นี่คือ "atomic cross-app change" ที่เป็นเหตุผลจริงที่ทีมใหญ่เลือก monorepo
+
 ---
 
 ## เมื่อทำเสร็จ
 
-กลับมาบอกผลลัพธ์ + ปัญหาที่เจอจริง (ถ้ามี) แล้วเราจะเอาสิ่งที่แก้ได้จริงไปบันทึกเพิ่มใน Interview-FE (`/micro-frontend`)
-กับ Obsidian ตามธรรมเนียมเดิม — โดยเฉพาะจุดที่ยังไม่ปิดเคส 100%: `vite dev` รองรับ federation ไหม (ตอนนี้ใช้ build+preview
-เลี่ยงไปก่อน), CORS บน Vercel production จริง (ข้อ 3.4), และถ้าใครอยากลองทำ true React-singleton sharing สำเร็จ (ข้อ 3.5
-ช่วงท้าย) เพราะนั่นคือความรู้ verified จริงจากการลงมือทำ ไม่ใช่แค่ก็อปจาก docs
+**อัปเดต:** ทำครบทั้ง 6 ข้อแล้ว deploy จริงบน Vercel สำเร็จ verified ทุกจุด (widget/shell/landing เชื่อมกันได้จริง, CORS
+ผ่านอัตโนมัติ, charset ถูก) เหลือแค่ข้อ 5 (git branching practice — merge feature branch ทดสอบว่า deploy แค่ project
+ที่เปลี่ยนจริง) ที่ยังไม่ได้ลองยืนยันแบบ end-to-end บน Vercel — ถ้าลองแล้วมาเล่าผลให้ฟัง จะได้บันทึกต่อ
+
+**ข้อ 9 (ใช้ประโยชน์จริงของ monorepo) ยังไม่ได้ลองทำ** — เป็นแบบฝึกหัดเสริมที่ตอบคำถาม "ทำไมต้อง monorepo" ที่คุยกันไว้
+ลองทำแล้วมาเล่าผล โดยเฉพาะจุดพิสูจน์ (TypeScript error ข้ามแอปตอนแก้ shared type ผิด, PR เดียวที่ diff ครบทั้งระบบ)
+จะได้บันทึกเป็นความรู้ verified ต่อ เหมือนทุกข้ออื่นที่ผ่านมา
