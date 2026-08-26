@@ -2,3 +2,5 @@ node_modules/
 .DS_Store
 apps/*/pnpm-lock.yaml
 packages/*/pnpm-lock.yaml
+apps/*/pnpm-workspace.yaml
+packages/*/pnpm-workspace.yaml
