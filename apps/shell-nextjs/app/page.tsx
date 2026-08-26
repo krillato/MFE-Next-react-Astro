@@ -26,3 +26,4 @@ export default async function Home() {
     </main>
   );
 }
+// trigger vercel rebuild with new install command override
