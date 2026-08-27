@@ -1,3 +1,4 @@
+import Link from "next/link";
 import RemoteWidgetSection from "./RemoteWidgetSection";
 
 export const revalidate = 60; //ISR
@@ -17,6 +18,10 @@ export default async function Home() {
     <main style={{ padding: 24 }}>
       <div className="bg-danger-500 p-8">test</div>
       <h1>Shell (Next.js ISR)</h1>
+
+      <Link href="/create-product" className="text-brand-600 underline">
+        สร้างสินค้า →
+      </Link>
       <ul>
         {posts.map((p: { id: number; title: string }) => (
           <li key={p.id}>{p.title}</li>

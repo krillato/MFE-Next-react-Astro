@@ -635,6 +635,74 @@ internal ของ React เลย (ดู diagram "mfe-workshop-mount-pattern" 
 - **วิธีเช็คว่าถูกจริง:** เปิดหน้า production ใหม่ (tab สดไม่มี cache) เห็น widget render + คลิกปุ่มนับได้จริง —
   ทดสอบยืนยันแล้วว่าหลัง redeploy ทำงานถูก (นับได้ถึง 2)
 
+### 8.12 (ข้อ 6) `ERR_PNPM_WORKSPACE_PKG_NOT_FOUND` เฉพาะ `shell-nextjs` — ไฟล์ `pnpm-lock.yaml` ปลอมค้างอยู่ในแอปย่อย
+- **อาการ:** Vercel build ของ `shell-nextjs` fail ด้วย
+  `"@mfe/shared-types@workspace:*" is in the dependencies but no package named "@mfe/shared-types" is present in the
+  workspace` แม้ local รัน `pnpm install --frozen-lockfile` จาก root ผ่านตลอด
+- **สาเหตุที่ยืนยันด้วยการเช็คจริง:** `git ls-tree -r HEAD --name-only` เจอ `apps/shell-nextjs/pnpm-lock.yaml` และ
+  `apps/landing-astro/pnpm-lock.yaml` ตกค้างอยู่ตั้งแต่ commit แก้ "submodule" (ดู 8.6) — lockfile ปลอมพวกนี้เก่ากว่า
+  ตัวจริงที่ root และไม่มี entry ของ `@mfe/shared-types`
+- **แก้:**
+  ```bash
+  rm apps/shell-nextjs/pnpm-lock.yaml apps/landing-astro/pnpm-lock.yaml
+  # เพิ่มกันเผลอ commit ซ้ำ:
+  # apps/*/pnpm-lock.yaml ใน .gitignore
+  git add -A
+  git commit -m "fix: remove stray per-app pnpm-lock.yaml files causing Vercel deploy failures"
+  git push
+  ```
+- **วิธีเช็คว่าถูกจริง:** จำลอง CWD เดียวกับที่ Vercel ใช้จริง (ไม่ใช่รันจาก root เฉยๆ เพราะ root หาไฟล์ถูกอยู่แล้ว):
+  `cd apps/shell-nextjs && pnpm install --frozen-lockfile` ต้องผ่านไม่ error — **บั๊กนี้แก้ได้แค่บางส่วน** ยัง error
+  ต่อด้วยสาเหตุอื่นซ้อนอยู่ (ดู 8.13)
+
+### 8.13 (ข้อ 6) สาเหตุจริง — `pnpm-workspace.yaml` ปลอมค้างอยู่ในแอปย่อย ทำให้ pnpm หยุดหา root ก่อนเจอตัวจริง
+- **อาการ:** error เดิมจาก 8.12 ยังขึ้นซ้ำแม้ลบ `pnpm-lock.yaml` ปลอมไปแล้ว —
+  `Packages found in the workspace: ` (ว่างเปล่า)
+- **สาเหตุที่ยืนยันด้วยการเช็คจริง:** `git ls-tree` เจอ `apps/shell-nextjs/pnpm-workspace.yaml` และ
+  `apps/landing-astro/pnpm-workspace.yaml` ตกค้างอยู่คู่กับ lockfile ปลอมใน 8.12 — ทั้งคู่**ไม่มี `packages:` field**
+  เลย pnpm หา `pnpm-workspace.yaml` โดยเดินขึ้นทีละ level จาก CWD แล้ว**หยุดค้นหาทันทีที่เจอไฟล์ชื่อนี้ครั้งแรก** ไม่สนว่า
+  เนื้อหาข้างในจะว่างเปล่าหรือไม่ — พอเจอไฟล์ปลอมก่อน ก็เลยไม่เดินขึ้นไปหาตัวจริงที่ root ที่มี `packages: [apps/*, packages/*]`
+  (`widget-react19` ไม่พังเพราะไม่มีไฟล์ปลอมแบบนี้ตกค้าง — เป็นเบาะแสสำคัญที่ทำให้เทียบโค้ด 2 แอปนี้แล้วเจอ)
+- **แก้:**
+  ```bash
+  rm apps/shell-nextjs/pnpm-workspace.yaml apps/landing-astro/pnpm-workspace.yaml
+  # เพิ่มกันเผลอ commit ซ้ำ:
+  # apps/*/pnpm-workspace.yaml ใน .gitignore
+  git add -A
+  git commit -m "fix: remove stray per-app pnpm-workspace.yaml files (real root cause)"
+  git push
+  ```
+- **วิธีเช็คว่าถูกจริง:** `cd apps/shell-nextjs && pnpm install --frozen-lockfile` ต้องเจอ "Scope: all 6 workspace
+  projects" — **บทเรียน:** เมื่อ error เกิดเฉพาะบน CI/CD แต่ local (รันจาก root) ผ่านตลอด ให้สงสัยไฟล์ตกค้างที่ local ไม่เคย
+  รันจาก CWD เดียวกับ CI ก่อน แล้วค่อยสงสัย platform config — อย่าวนเช็ค dashboard settings ซ้ำๆ โดยไม่มีหลักฐานจากโค้ด/ไฟล์จริง
+
+### 8.14 (ข้อ 6) `packageManager` field อยู่ผิดตำแหน่ง — ทำให้ deploy ยัง fail ต่ออีกชั้นแม้แก้ 8.12-8.13 แล้ว
+- **อาการ:** error เดิมจาก 8.13 ยังขึ้นซ้ำอีกรอบแม้ลบไฟล์ปลอมครบแล้ว
+- **สาเหตุที่ยืนยันด้วยการเช็คจริง:** เทียบ `package.json` ของ `shell-nextjs` (fail) กับ `widget-react19` (deploy ผ่าน)
+  ตรงๆ เจอว่า `apps/shell-nextjs/package.json` มี `"packageManager": "pnpm@10.11.0"` ซึ่ง `widget-react19/package.json`
+  ไม่มี — ตาม Vercel docs field นี้ควรอยู่ที่ **root `package.json` เท่านั้น** การมีอยู่ในแอปย่อยที่ Root Directory ชี้ตรง
+  ไปหา (เฉพาะ framework preset Next.js) รบกวนขั้นตอน detect package manager/workspace
+- **แก้:** ย้าย field ออกจาก `apps/shell-nextjs/package.json` ไปไว้ที่ root `package.json` แทน
+  ```diff
+  # apps/shell-nextjs/package.json
+     "tailwindcss": "^4",
+     "typescript": "^5"
+  -  },
+  -  "packageManager": "pnpm@10.11.0"
+  +  }
+   }
+  ```
+  ```diff
+  # package.json (root)
+       "dev:widget": "pnpm --filter widget-react19 build && pnpm --filter widget-react19 preview"
+  -  }
+  +  },
+  +  "packageManager": "pnpm@10.11.0"
+   }
+  ```
+- **วิธีเช็คว่าถูกจริง:** push แล้วดู deployment ใหม่ผ่าน + `curl` production URL ของ shell-nextjs เจอ test div
+  (`bg-danger-500`) ที่ก่อนหน้านี้ไม่เคยขึ้นเลยตลอดการ debug รอบนี้ — ยืนยันว่า deploy สำเร็จจริง ไม่ใช่แค่ build ผ่าน
+
 ---
 
 ## 9. ใช้ประโยชน์จริงของ monorepo (แบบฝึกหัดเสริม — ยังไม่ได้ทำ ลองเองแล้วเล่าผล)
