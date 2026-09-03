@@ -13,6 +13,9 @@ dist-ssr
 *.local
 .mf
 
+# scratch/output — never meant to be committed
+Claude outputs/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
