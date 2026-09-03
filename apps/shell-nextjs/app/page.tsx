@@ -22,6 +22,10 @@ export default async function Home() {
       <Link href="/create-product" className="text-brand-600 underline">
         สร้างสินค้า →
       </Link>
+      <br />
+      <Link href="/products-list" className="text-brand-600 underline">
+        รายการสินค้า จาก NEST API →
+      </Link>
       <ul>
         {posts.map((p: { id: number; title: string }) => (
           <li key={p.id}>{p.title}</li>
